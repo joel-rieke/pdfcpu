@@ -531,6 +531,7 @@ func parseName(line *string) (*types.Name, error) {
 func processDictKeys(line *string, relaxed bool) (types.Dict, error) {
 	l := *line
 	var eol bool
+	var hasNames bool
 	d := types.NewDict()
 	for !strings.HasPrefix(l, ">>") {
 		key, err := parseName(&l)
@@ -559,8 +560,18 @@ func processDictKeys(line *string, relaxed bool) (types.Dict, error) {
 			if log.ParseEnabled() {
 				log.Parse.Printf("ParseDict: dict[%s]=%v\n", key, obj)
 			}
-			if ok := d.Insert(string(*key), obj); !ok {
-				return nil, errDictionaryDuplicateKey
+			stringKey := string(*key)
+			if !hasNames {
+				// Avoid expensive "DecodeName" on existing keys in "Insert".
+				if _, found := d[stringKey]; found {
+					return nil, errDictionaryDuplicateKey
+				}
+				d[stringKey] = obj
+				hasNames = strings.IndexByte(stringKey, '#') >= 0
+			} else {
+				if ok := d.Insert(stringKey, obj); !ok {
+					return nil, errDictionaryDuplicateKey
+				}
 			}
 			continue
 		}
@@ -573,7 +584,16 @@ func processDictKeys(line *string, relaxed bool) (types.Dict, error) {
 		// Specifying the null object as the value of a dictionary entry (7.3.7, "Dictionary Objects")
 		// hall be equivalent to omitting the entry entirely.
 		if obj != nil {
-			d.Insert(string(*key), obj)
+			stringKey := string(*key)
+			if !hasNames {
+				// Avoid expensive "DecodeName" on existing keys in "Insert".
+				if _, found := d[stringKey]; !found {
+					d[stringKey] = obj
+					hasNames = strings.IndexByte(stringKey, '#') >= 0
+				}
+			} else {
+				d.Insert(stringKey, obj)
+			}
 			if log.ParseEnabled() {
 				log.Parse.Printf("ParseDict: dict[%s]=%v\n", key, obj)
 			}
