@@ -17,6 +17,8 @@ limitations under the License.
 package model
 
 import (
+	"fmt"
+	"strings"
 	"testing"
 )
 
@@ -145,6 +147,26 @@ func doTestParseDictWithComments(t *testing.T) {
 
 }
 
+func doTestLargeDicts(t *testing.T) {
+	// Make sure parsing lots of large dictionaries is fast.
+	var sb strings.Builder
+	sb.WriteString("<<")
+	for i := 0; i < 100; i++ {
+		sb.WriteString(fmt.Sprintf("/Key%d (Value)", i))
+	}
+	sb.WriteString(">>")
+	largeDict := sb.String()
+
+	sb.Reset()
+	sb.WriteString("<<")
+	for i := 0; i < 10000; i++ {
+		sb.WriteString(fmt.Sprintf("/Dict%d %s", i, largeDict))
+	}
+	sb.WriteString(">>")
+
+	doTestParseDictOK(sb.String(), t)
+}
+
 func TestParseDict(t *testing.T) {
 	doTestParseDictGeneral(t)
 	doTestParseDictNameObjects(t)
@@ -156,4 +178,5 @@ func TestParseDict(t *testing.T) {
 	doTestParseDictNumerics(t)
 	doTestParseDictIndirectRefs(t)
 	doTestParseDictWithComments(t)
+	doTestLargeDicts(t)
 }

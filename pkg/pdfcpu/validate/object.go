@@ -688,7 +688,11 @@ func validateNameEntry(xRefTable *model.XRefTable, d types.Dict, dictName, entry
 
 	name, ok := o.(types.Name)
 	if !ok {
-		return nil, errors.Errorf("pdfcpu: validateNameEntry: dict=%s entry=%s invalid type %T", dictName, entryName, o)
+		nameInt, ok := o.(types.Integer)
+		if !ok {
+			return nil, errors.Errorf("pdfcpu: validateNameEntry: dict=%s entry=%s invalid type %T", dictName, entryName, o)
+		}
+		name = types.Name(nameInt.String())
 	}
 
 	// Validation
